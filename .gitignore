@@ -10,3 +10,14 @@
 *.lai
 *.la
 *.a
+
+#others
+*.log
+*.pdb
+*.idb
+*.obj
+*.tlog
+*.lastbuildstate
+*.raw
+*.exe
+*.ilk
