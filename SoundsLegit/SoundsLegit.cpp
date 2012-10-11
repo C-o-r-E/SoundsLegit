@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 
+#define CINTERFACE
 #include <dsound.h>
 
 _TCHAR sndOut[] = _T("Speakers and Headphones (IDT High Definition Audio CODEC)");
@@ -26,6 +27,11 @@ int _tmain(int argc, _TCHAR* argv[])
 	FILE * pFile;
 	HRESULT hr;
 	IDirectSoundCapture8 * cap;
+
+	IDirectSoundCaptureBuffer8* capBuf;
+	DSCBUFFERDESC dscbd;
+	LPDIRECTSOUNDCAPTUREBUFFER  pDSCB;
+	WAVEFORMATEX wfx = {WAVE_FORMAT_PCM, 2, 44100, 176400, 4, 16, 0};
 
 	pFile = fopen("capture.raw", "wb");
 
@@ -54,10 +60,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	_tprintf(_T("Created sound capture device\n"));
 
 
-	IDirectSoundCaptureBuffer8* capBuf;
-	DSCBUFFERDESC dscbd;
-	LPDIRECTSOUNDCAPTUREBUFFER  pDSCB;
-	WAVEFORMATEX wfx = {WAVE_FORMAT_PCM, 2, 44100, 176400, 4, 16, 0};
+	
 	// wFormatTag, nChannels, nSamplesPerSec, mAvgBytesPerSec,
 	// nBlockAlign, wBitsPerSample, cbSize
 
@@ -69,7 +72,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	dscbd.dwFXCount = 0;
 	dscbd.lpDSCFXDesc = NULL;
 
-	hr = cap->CreateCaptureBuffer(&dscbd, &pDSCB, NULL);
+	hr = cap->lpVtbl->CreateCaptureBuffer(cap, &dscbd, &pDSCB, NULL);
 
 	if (FAILED(hr))
 	{
@@ -78,17 +81,17 @@ int _tmain(int argc, _TCHAR* argv[])
 	_tprintf(_T("Created capture buffer"));
 
 
-	hr = pDSCB->QueryInterface(IID_IDirectSoundCaptureBuffer8, (LPVOID*)&capBuf);
+	hr = pDSCB->lpVtbl->QueryInterface(pDSCB, &IID_IDirectSoundCaptureBuffer8, (LPVOID*)&capBuf);
 	if (FAILED(hr))
 	{
 		_tprintf(_T("Failed to QI capture buffer\n"));
 	}
 	_tprintf(_T("Created IDirectSoundCaptureBuffer8\n"));
-	pDSCB->Release(); 
+	pDSCB->lpVtbl->Release(pDSCB); 
 
 
 	_tprintf(_T("Trying to start capture\n"));
-	hr = capBuf->Start(DSCBSTART_LOOPING);
+	hr = capBuf->lpVtbl->Start(capBuf, DSCBSTART_LOOPING);
 	if (FAILED(hr))
 	{
 		_tprintf(_T("Failed to start capture\n"));
@@ -107,7 +110,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		DWORD dwReadPos;
 		LONG lLockSize;
 
-		hr = capBuf->GetCurrentPosition(NULL, &dwReadPos);
+		hr = capBuf->lpVtbl->GetCurrentPosition(capBuf, NULL, &dwReadPos);
 		if (FAILED(hr))
 		{
 			_tprintf(_T("Failed\n"));
@@ -116,7 +119,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		lLockSize = dscbd.dwBufferBytes;
 
-		hr = capBuf->Lock( 0L, lLockSize, &pbCaptureData, &dwCaptureLength, &pbCaptureData2, &dwCaptureLength2, 0L);
+		hr = capBuf->lpVtbl->Lock(capBuf, 0L, lLockSize, &pbCaptureData, &dwCaptureLength, &pbCaptureData2, &dwCaptureLength2, 0L);
 		if (FAILED(hr))
 		{
 			_tprintf(_T("Failed\n"));
@@ -126,7 +129,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		fwrite(pbCaptureData, 1, dwCaptureLength, pFile);
 		fwrite(pbCaptureData2, 1, dwCaptureLength2, pFile);
 
-		hr = capBuf->Unlock(pbCaptureData, dwCaptureLength, pbCaptureData2, dwCaptureLength2);
+		hr = capBuf->lpVtbl->Unlock(capBuf, pbCaptureData, dwCaptureLength, pbCaptureData2, dwCaptureLength2);
 		if (FAILED(hr))
 		{
 			_tprintf(_T("Failed\n"));
@@ -137,7 +140,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 
 	_tprintf(_T("Trying to stop capture\n"));
-	hr = capBuf->Stop();
+	hr = capBuf->lpVtbl->Stop(capBuf);
 	if (FAILED(hr))
 	{
 		_tprintf(_T("Failed to stop capture\n"));
